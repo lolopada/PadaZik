@@ -78,7 +78,7 @@ public class MenuScreen implements Screen {
 
         Texture vinylTexture = this.assetsManager.getVinylTexture();
 
-        float vinylY = 70;
+        float vinylY = 75;
 
         // Vinyle gauche - partiellement hors écran
         com.kotcrab.vis.ui.widget.VisImage leftVinyl = new com.kotcrab.vis.ui.widget.VisImage(vinylTexture);
