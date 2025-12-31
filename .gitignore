@@ -154,6 +154,10 @@ Thumbs.db
 *#*#
 /.kotlin/
 /assets/assets.txt
+/assets/Animaru/
+youtube_downloader.py
+youtube_links.txt
+downloaded_music/
 
 ## Special cases:
 

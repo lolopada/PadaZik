@@ -12,7 +12,7 @@ public class Main extends Game {
     public void create() {
         VisUI.load();
         this.assetsManager = AssetsManager.getInstance();
-        this.menuScreen = new MenuScreen(this);
+        this.menuScreen = new MenuScreen();
         setScreen(this.menuScreen);
     }
 
