@@ -1,0 +1,50 @@
+[compileJava, compileTestJava]*.options*.encoding = 'UTF-8'
+eclipse.project.name = appName + '-lwjgl3'
+
+// Apply the application plugin to add support for building a CLI application
+apply plugin: 'application'
+
+// Set the main class for the application
+application {
+  mainClass = 'io.github.padalolo.lwjgl3.Lwjgl3Launcher'
+}
+
+dependencies {
+  // Depend on the core project
+  implementation project(':core')
+  
+  // LWJGL3 backend for LibGDX
+  api "com.badlogicgames.gdx:gdx-backend-lwjgl3:$gdxVersion"
+  api "com.badlogicgames.gdx:gdx-platform:$gdxVersion:natives-desktop"
+  
+  // FreeType natives for desktop
+  api "com.badlogicgames.gdx:gdx-freetype-platform:$gdxVersion:natives-desktop"
+  
+  if(enableGraalNative == 'true') {
+    annotationProcessor "io.github.berstanio:gdx-svmhelper-annotations:$graalHelperVersion"
+  }
+}
+
+// Configure the run task
+run {
+  workingDir = project.rootDir.path + '/assets'
+  setIgnoreExitValue(true)
+  
+  if (org.gradle.internal.os.OperatingSystem.current() == org.gradle.internal.os.OperatingSystem.MAC_OS) {
+    // Required to run LWJGL3 applications on macOS
+    jvmArgs += "-XstartOnFirstThread"
+  }
+}
+
+// Configure JAR manifest
+jar {
+  archiveBaseName.set(appName)
+  dependsOn configurations.runtimeClasspath
+  from { configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) } }
+  manifest {
+    attributes 'Main-Class': application.mainClass.get()
+  }
+  doLast {
+    file(archiveFile).setExecutable(true, false)
+  }
+}
