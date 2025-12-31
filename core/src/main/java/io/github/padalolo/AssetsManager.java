@@ -53,10 +53,20 @@ public class AssetsManager implements Disposable {
 
     public Array<String> getAllFoldersInAssets() {
         Array<String> folders = new Array<>();
-        FileHandle assetsDir = Gdx.files.internal("");
+        
+        // Use absolute path for assets
+        FileHandle assetsDir = Gdx.files.absolute("C:/Users/loics/Documents/github/PadaZik/assets");
+        
+        System.out.println("Assets directory path: " + assetsDir.path());
+        System.out.println("Assets directory exists: " + assetsDir.exists());
+        System.out.println("Assets directory is directory: " + assetsDir.isDirectory());
         
         if (assetsDir.exists() && assetsDir.isDirectory()) {
-            for (FileHandle file : assetsDir.list()) {
+            FileHandle[] files = assetsDir.list();
+            System.out.println("Number of files found: " + files.length);
+            
+            for (FileHandle file : files) {
+                System.out.println("Found: " + file.name() + " (isDirectory: " + file.isDirectory() + ")");
                 if (file.isDirectory()) {
                     folders.add(file.name());
                 }

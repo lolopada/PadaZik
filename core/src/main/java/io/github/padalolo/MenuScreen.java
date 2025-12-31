@@ -45,6 +45,7 @@ public class MenuScreen implements Screen {
         this.VinyleTable = this.createVinyleTable();
         this.mainTable.add(this.VinyleTable).expandX().fillX().height(110).padTop(10).row();
 
+        System.out.println(this.assetsManager.getAllFoldersInAssets().size);
     }
 
     private VisTable createHeader() {
