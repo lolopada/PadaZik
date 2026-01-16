@@ -3,7 +3,6 @@ package io.github.padalolo;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.audio.Music;
 import com.badlogic.gdx.files.FileHandle;
-import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.Disposable;
 
@@ -11,7 +10,6 @@ public class Album implements Disposable {
     private final String name;
     private final Array<MusicTrack> tracks;
     private int currentTrackIndex;
-    private Texture albumImage;
 
     public Album(String albumName) {
         this.name = albumName;
@@ -21,20 +19,9 @@ public class Album implements Disposable {
     }
 
     private void loadTracks() {
-        FileHandle albumDir = Gdx.files.internal(name);
+        FileHandle albumDir = Gdx.files.absolute(System.getenv("LOCALAPPDATA") + "/PadaZik/assets/" + name);
         
         if (albumDir.exists() && albumDir.isDirectory()) {
-            FileHandle imageFile = albumDir.child("image.png");
-            if (imageFile.exists()) {
-                try {
-                    this.albumImage = new Texture(imageFile);
-                } catch (Exception e) {
-                    this.albumImage = null;
-                }
-            } else {
-                this.albumImage = null;
-            }
-            
             for (FileHandle file : albumDir.list()) {
                 if (file.extension().equalsIgnoreCase("mp3")) {
                     tracks.add(new MusicTrack(file.nameWithoutExtension(), file.path()));
@@ -79,10 +66,6 @@ public class Album implements Disposable {
         return currentTrackIndex;
     }
 
-    public Texture getAlbumImage() {
-        return albumImage;
-    }
-
     public MusicTrack nextTrack() {
         if (tracks.size > 0) {
             currentTrackIndex = (currentTrackIndex + 1) % tracks.size;
@@ -105,11 +88,6 @@ public class Album implements Disposable {
             track.dispose();
         }
         tracks.clear();
-        
-        if (albumImage != null) {
-            albumImage.dispose();
-            albumImage = null;
-        }
     }
 
     public static class MusicTrack implements Disposable {
@@ -132,7 +110,7 @@ public class Album implements Disposable {
 
         public Music getMusic() {
             if (music == null) {
-                music = Gdx.audio.newMusic(Gdx.files.internal(filePath));
+                music = Gdx.audio.newMusic(Gdx.files.absolute(filePath));
             }
             return music;
         }

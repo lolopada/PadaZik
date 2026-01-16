@@ -2,6 +2,7 @@ package io.github.padalolo;
 
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.files.FileHandle;
+import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.freetype.FreeTypeFontGenerator;
 import com.badlogic.gdx.utils.Array;
@@ -13,7 +14,9 @@ public class AssetsManager implements Disposable {
     private static AssetsManager instance;
     private BitmapFont font;
     private int loadedFontSize = -1;
-    private com.badlogic.gdx.graphics.Texture vinylTexture;
+    private Texture vinylTexture;
+    private Array<String> albumsList;
+    private Array<Texture> albumImageList;
     private Album currentAlbum;
 
     public static AssetsManager getInstance() {
@@ -42,38 +45,47 @@ public class AssetsManager implements Disposable {
         return this.font;
     }
 
-    public com.badlogic.gdx.graphics.Texture getVinylTexture() {
+    public Texture getVinylTexture() {
         if (this.vinylTexture == null) {
-            this.vinylTexture = new com.badlogic.gdx.graphics.Texture(Gdx.files.internal(VINYL_IMAGE_PATH), true);
-            this.vinylTexture.setFilter(com.badlogic.gdx.graphics.Texture.TextureFilter.MipMapLinearLinear,
-                    com.badlogic.gdx.graphics.Texture.TextureFilter.Linear);
+            this.vinylTexture = new Texture(Gdx.files.internal(VINYL_IMAGE_PATH), true);
+            this.vinylTexture.setFilter(Texture.TextureFilter.MipMapLinearLinear, Texture.TextureFilter.Linear);
         }
         return this.vinylTexture;
     }
 
-    public Array<String> getAllFoldersInAssets() {
+    public void setupAlbum() {
         Array<String> folders = new Array<>();
-        
-        // Use absolute path for assets
-        FileHandle assetsDir = Gdx.files.absolute("C:/Users/loics/Documents/github/PadaZik/assets");
-        
+        Array<Texture> images = new Array<>();
+
+        FileHandle assetsDir = Gdx.files.absolute(System.getenv("LOCALAPPDATA") + "/PadaZik/assets");
         System.out.println("Assets directory path: " + assetsDir.path());
-        System.out.println("Assets directory exists: " + assetsDir.exists());
-        System.out.println("Assets directory is directory: " + assetsDir.isDirectory());
-        
+
         if (assetsDir.exists() && assetsDir.isDirectory()) {
             FileHandle[] files = assetsDir.list();
-            System.out.println("Number of files found: " + files.length);
-            
+
             for (FileHandle file : files) {
-                System.out.println("Found: " + file.name() + " (isDirectory: " + file.isDirectory() + ")");
                 if (file.isDirectory()) {
                     folders.add(file.name());
+
+                    FileHandle imageFile = file.child("image.png");
+                    if (imageFile.exists()) {
+                        try {
+                            Texture albumTexture = new Texture(imageFile);
+                            images.add(albumTexture);
+                        } catch (Exception e) {
+                            System.err.println("Erreur lors du chargement de l'image pour " + file.name() + ": " + e.getMessage());
+                            images.add(null);
+                        }
+                    } else {
+                        System.out.println("Aucune image trouvée pour l'album: " + file.name());
+                        images.add(null);
+                    }
                 }
             }
         }
-        
-        return folders;
+
+        this.albumsList = folders;
+        this.albumImageList = images;
     }
 
     public Album loadAlbum(String albumName) {
@@ -83,7 +95,7 @@ public class AssetsManager implements Disposable {
             }
             unloadCurrentAlbum();
         }
-        
+
         this.currentAlbum = new Album(albumName);
         return this.currentAlbum;
     }
@@ -99,8 +111,20 @@ public class AssetsManager implements Disposable {
         return this.currentAlbum;
     }
 
+    public Array<String> getAlbumsList() {
+        return this.albumsList;
+    }
+
+    public Array<Texture> getAlbumImageList() {
+        return this.albumImageList;
+    }
+
     public boolean isAlbumLoaded() {
         return this.currentAlbum != null;
+    }
+
+    public int getAlbumsCount() {
+        return this.albumsList.size;
     }
 
     @Override
@@ -111,6 +135,14 @@ public class AssetsManager implements Disposable {
         }
         if (this.vinylTexture != null) {
             this.vinylTexture.dispose();
+        }
+        if (this.albumImageList != null) {
+            for (Texture texture : this.albumImageList) {
+                if (texture != null) {
+                    texture.dispose();
+                }
+            }
+            this.albumImageList.clear();
         }
         this.unloadCurrentAlbum();
         this.loadedFontSize = -1;

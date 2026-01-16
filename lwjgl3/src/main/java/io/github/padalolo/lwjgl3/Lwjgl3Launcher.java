@@ -31,7 +31,7 @@ public class Lwjgl3Launcher {
         /// fully disable Vsync; this can cause screen tearing.
 
         configuration.setDecorated(false);
-        configuration.setWindowedMode(300, 240);
+        configuration.setWindowedMode(300, 290);
         //// You can change these files; they are in lwjgl3/src/main/resources/ . They
         /// can also be loaded from the root of assets/ .
         configuration.setWindowIcon("logo.png");

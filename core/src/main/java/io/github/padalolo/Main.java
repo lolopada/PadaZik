@@ -4,7 +4,6 @@ import com.badlogic.gdx.Game;
 import com.kotcrab.vis.ui.VisUI;
 
 public class Main extends Game {
-
     private AssetsManager assetsManager;
     private MenuScreen menuScreen;
 
@@ -12,6 +11,8 @@ public class Main extends Game {
     public void create() {
         VisUI.load();
         this.assetsManager = AssetsManager.getInstance();
+        this.assetsManager.setupAlbum();
+
         this.menuScreen = new MenuScreen();
         setScreen(this.menuScreen);
     }
