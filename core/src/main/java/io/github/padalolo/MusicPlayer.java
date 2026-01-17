@@ -77,10 +77,18 @@ public class MusicPlayer {
 
         if (currentMusic == null) {
             currentMusic = track.getMusic();
+            currentMusic.setVolume(volume);
+            
+            // Set completion listener to auto-play next track
+            currentMusic.setOnCompletionListener(new Music.OnCompletionListener() {
+                @Override
+                public void onCompletion(Music music) {
+                    next();
+                }
+            });
         }
 
         if (!currentMusic.isPlaying()) {
-            currentMusic.setVolume(volume);
             currentMusic.play();
             isPlaying = true;
             if (listener != null) {
@@ -113,22 +121,8 @@ public class MusicPlayer {
             return;
         }
 
-        if (currentMusic != null) {
-            currentMusic.stop();
-            currentMusic = null;
-        }
-
         Album.MusicTrack nextTrack = currentAlbum.nextTrack();
-        if (nextTrack != null) {
-            currentMusic = nextTrack.getMusic();
-            currentMusic.setVolume(volume);
-            currentMusic.play();
-            isPlaying = true;
-            if (listener != null) {
-                listener.onPlayStateChanged(true);
-                listener.onTrackChanged(nextTrack.getTitle());
-            }
-        }
+        playTrack(nextTrack);
     }
 
     public void previous() {
@@ -136,20 +130,37 @@ public class MusicPlayer {
             return;
         }
 
+        Album.MusicTrack prevTrack = currentAlbum.previousTrack();
+        playTrack(prevTrack);
+    }
+    
+    /**
+     * Helper method to play a specific track
+     * Stops current music and starts playing the new track
+     */
+    private void playTrack(Album.MusicTrack track) {
         if (currentMusic != null) {
             currentMusic.stop();
             currentMusic = null;
         }
 
-        Album.MusicTrack prevTrack = currentAlbum.previousTrack();
-        if (prevTrack != null) {
-            currentMusic = prevTrack.getMusic();
+        if (track != null) {
+            currentMusic = track.getMusic();
             currentMusic.setVolume(volume);
+            
+            // Set completion listener to auto-play next track
+            currentMusic.setOnCompletionListener(new Music.OnCompletionListener() {
+                @Override
+                public void onCompletion(Music music) {
+                    next();
+                }
+            });
+            
             currentMusic.play();
             isPlaying = true;
             if (listener != null) {
                 listener.onPlayStateChanged(true);
-                listener.onTrackChanged(prevTrack.getTitle());
+                listener.onTrackChanged(track.getTitle());
             }
         }
     }
@@ -190,6 +201,11 @@ public class MusicPlayer {
             currentMusic.dispose();
             currentMusic = null;
         }
+        if (currentAlbum != null) {
+            currentAlbum = null;
+        }
         isPlaying = false;
+        listener = null;
+        instance = null;
     }
 }

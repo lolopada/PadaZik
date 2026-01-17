@@ -29,9 +29,11 @@ public class Tools {
             sourceTexture.getTextureData().prepare();
         }
         Pixmap sourcePixmap = sourceTexture.getTextureData().consumePixmap();
-
-        int finalSize = Math.max(size, Math.min(sourcePixmap.getWidth(), sourcePixmap.getHeight()));
-        Pixmap circularPixmap = new Pixmap(finalSize, finalSize, Pixmap.Format.RGBA8888);
+        Pixmap circularPixmap = null;
+        
+        try {
+            int finalSize = Math.max(size, Math.min(sourcePixmap.getWidth(), sourcePixmap.getHeight()));
+            circularPixmap = new Pixmap(finalSize, finalSize, Pixmap.Format.RGBA8888);
         circularPixmap.setColor(0, 0, 0, 0);
         circularPixmap.fill();
 
@@ -82,12 +84,14 @@ public class Tools {
             }
         }
 
-        Texture circularTexture = new Texture(circularPixmap);
-        circularTexture.setFilter(Texture.TextureFilter.Linear, Texture.TextureFilter.Linear);
-
-        circularPixmap.dispose();
-        sourcePixmap.dispose();
-
-        return circularTexture;
+            Texture circularTexture = new Texture(circularPixmap);
+            circularTexture.setFilter(Texture.TextureFilter.Linear, Texture.TextureFilter.Linear);
+            return circularTexture;
+        } finally {
+            if (circularPixmap != null) {
+                circularPixmap.dispose();
+            }
+            sourcePixmap.dispose();
+        }
     }
 }

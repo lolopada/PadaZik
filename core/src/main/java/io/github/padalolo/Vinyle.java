@@ -1,29 +1,22 @@
 package io.github.padalolo;
 
 import com.badlogic.gdx.graphics.Texture;
+import com.badlogic.gdx.scenes.scene2d.actions.Actions;
 import com.kotcrab.vis.ui.widget.VisImage;
 
 public class Vinyle extends VisImage {
     
-    private Album album;
-    private Texture circleTexture;
+    private int albumIndex;
     private boolean isRotating;
     private float rotationSpeed;
     private float currentRotation;
-
-    private float x;
-    private float y;
     
     public Vinyle(Texture texture, float x, float y) {
         super(texture);
-        this.circleTexture = texture;
-        this.album = null;
-        this.x=x;
-        this.y=y;
+        this.albumIndex = -1;
         this.isRotating = false;
         this.rotationSpeed = 0.07f;
         this.currentRotation = 0f;
-        setupOrigin();
     }
     
     @Override
@@ -39,20 +32,12 @@ public class Vinyle extends VisImage {
         }
     }
 
-    public float getXx() {
-        return x;
+    public int getAlbumIndex() {
+        return albumIndex;
     }
 
-    public void setX(float x) {
-        this.x = x;
-    }
-
-    public float getYy() {
-        return y;
-    }
-
-    public void setY(float y) {
-        this.y = y;
+    public void setAlbumIndex(int albumIndex) {
+        this.albumIndex = albumIndex;
     }
     
     public void startRotation() {
@@ -70,29 +55,10 @@ public class Vinyle extends VisImage {
     public float getRotationSpeed() {
         return rotationSpeed;
     }
-    
-    public Album getAlbum() {
-        return album;
-    }
-
-    public void setAlbum(Album album) {
-        this.album=album;
-    }
-
-    public Texture getCircleTexture() {
-        return circleTexture;
-    }
 
     public void resetRotation() {
         this.currentRotation = 0f;
         setRotation(0f);
-    }
-    
-    /**
-     * Configure l'origine de rotation au centre du vinyle
-     */
-    private void setupOrigin() {
-        // L'origine sera mise à jour quand les dimensions seront connues
     }
     
     @Override
@@ -100,5 +66,19 @@ public class Vinyle extends VisImage {
         super.sizeChanged();
         // Met à jour l'origine de rotation au centre quand la taille change
         setOrigin(getWidth() / 2f, getHeight() / 2f);
+    }
+    
+    /**
+     * Anime le vinyle vers une nouvelle position avec un effet de glissement
+     * @param targetX Position X cible
+     * @param targetY Position Y cible
+     * @param duration Durée de l'animation en secondes
+     */
+    public void animateToPosition(float targetX, float targetY, float duration) {
+        // Annule toutes les actions en cours sur ce vinyle
+        clearActions();
+        
+        // Crée une action de mouvement avec interpolation pour un effet fluide
+        addAction(Actions.moveTo(targetX, targetY, duration, com.badlogic.gdx.math.Interpolation.smooth));
     }
 }

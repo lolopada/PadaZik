@@ -18,6 +18,18 @@ import com.badlogic.gdx.scenes.scene2d.InputEvent;
 import com.badlogic.gdx.scenes.scene2d.utils.ClickListener;
 
 public class MenuScreen implements Screen, MusicPlayer.MusicPlayerListener {
+    // UI Constants
+    private static final int VINYL_SIZE = 120;
+    private static final int VINYL_SPACING = 60;
+    private static final float VINYL_Y = 125;
+    private static final float VINYL_ANIMATION_DURATION = 0.4f;
+    private static final int FONT_SIZE = 16;
+    private static final int SLIDER_WIDTH = 100;
+    private static final int SLIDER_HEIGHT = 10;
+    private static final int SLIDER_KNOB_SIZE = 6;
+    private static final int MAX_TITLE_LENGTH = 25;
+    private static final String SCROLL_SEPARATOR = "   ";
+    
     private AssetsManager assetsManager;
     private MusicPlayer musicPlayer;
     private Stage stage;
@@ -26,13 +38,27 @@ public class MenuScreen implements Screen, MusicPlayer.MusicPlayerListener {
     private VisTable vinyleTable;
     private VisTable audioControlsTable;
     private Texture headerBgTexture;
-    private Texture vinyleTableTexture;
+    private Texture controlsBgTexture;
     private Array<Vinyle> vinyleList;
     private int currentAlbumIndex;
     private VisLabel currentTrackLabel;
     private VisLabel playPauseButton;
     private VisLabel elapsedTimeLabel;
-    private float vinylY = 125;
+    private LabelStyle sharedLabelStyle;
+    
+    // Scrolling text state
+    private String fullTrackTitle;
+    private String scrollingText;
+    private float scrollOffset;
+    private boolean shouldScroll;
+    
+    // Slider textures for proper disposal
+    private Texture sliderKnobTexture;
+    private Texture sliderBgTexture;
+    private Texture sliderKnobBeforeTexture;
+    
+    // Cache for circular textures
+    private Array<Texture> circularTexturesCache;
     
     public MenuScreen() {
         this.assetsManager = AssetsManager.getInstance();
@@ -40,6 +66,7 @@ public class MenuScreen implements Screen, MusicPlayer.MusicPlayerListener {
         this.musicPlayer.setListener(this);
         this.currentAlbumIndex = 0;
         this.vinyleList = new Array<>();
+        this.circularTexturesCache = new Array<>();
         this.initializeUI();
     }
 
@@ -50,7 +77,11 @@ public class MenuScreen implements Screen, MusicPlayer.MusicPlayerListener {
         this.stage.addActor(this.mainTable);
 
         // Load fonts once at the beginning
-        this.assetsManager.loadFont(16);
+        this.assetsManager.loadFont(FONT_SIZE);
+        
+        // Create shared label style
+        this.sharedLabelStyle = new LabelStyle();
+        this.sharedLabelStyle.font = this.assetsManager.getFont();
 
         this.headerTable = createHeader();
         this.mainTable.top();
@@ -76,13 +107,10 @@ public class MenuScreen implements Screen, MusicPlayer.MusicPlayerListener {
         table.setBackground(new TextureRegionDrawable(headerBgTexture));
         table.setTouchable(Touchable.enabled);
 
-        LabelStyle fontStyle = new LabelStyle();
-        fontStyle.font = this.assetsManager.getFont();
-
-        VisLabel titleLabel = new VisLabel("PadaZik", fontStyle);
+        VisLabel titleLabel = new VisLabel("PadaZik", sharedLabelStyle);
         table.add(titleLabel).expandX().left().pad(10);
 
-        VisLabel quitLabel = new VisLabel("X", fontStyle);
+        VisLabel quitLabel = new VisLabel("X", sharedLabelStyle);
         quitLabel.addListener(new QuitButtonListener(quitLabel));
         table.add(quitLabel).expandX().right().pad(10);
 
@@ -92,24 +120,24 @@ public class MenuScreen implements Screen, MusicPlayer.MusicPlayerListener {
 
     private VisTable createVinyleTable() {
         VisTable table = new VisTable();
-
-        int vinylSize = 120;
         
         float increment = 0;
         int index = 0;
 
         for(Texture albumTexture : this.assetsManager.getAlbumImageList()){
-            float x = Gdx.graphics.getWidth() / 2 - vinylSize / 2;
-            float y = vinylY;
+            float x = Gdx.graphics.getWidth() / 2 - VINYL_SIZE / 2;
+            float y = VINYL_Y;
             if (albumTexture != null) {
-                Vinyle vinyle = new Vinyle(Tools.createCircularTexture(albumTexture, vinylSize), x, y);
-                vinyle.setSize(vinylSize, vinylSize);
+                // Create circular texture and cache it
+                Texture circularTexture = Tools.createCircularTexture(albumTexture, VINYL_SIZE);
+                circularTexturesCache.add(circularTexture);
+                
+                Vinyle vinyle = new Vinyle(circularTexture, x, y);
+                vinyle.setSize(VINYL_SIZE, VINYL_SIZE);
                 vinyle.setPosition(x + increment, y);
                 
-                // Store album reference
-                String albumName = this.assetsManager.getAlbumsList().get(index);
-                Album album = new Album(albumName);
-                vinyle.setAlbum(album);
+                // Store album index reference instead of creating new Album
+                vinyle.setAlbumIndex(index);
                 
                 // Make vinyl clickable
                 final int albumIndex = index;
@@ -137,25 +165,22 @@ public class MenuScreen implements Screen, MusicPlayer.MusicPlayerListener {
 
     private VisTable createAudioControls() {
         VisTable table = new VisTable();
-        Texture controlsBgTexture = Tools.createColorTexture(new Color(0.15f, 0.15f, 0.15f, 1));
+        controlsBgTexture = Tools.createColorTexture(new Color(0.15f, 0.15f, 0.15f, 1));
         table.setBackground(new TextureRegionDrawable(controlsBgTexture));
 
-        LabelStyle fontStyle = new LabelStyle();
-        fontStyle.font = this.assetsManager.getFont();
-
         // Current track label
-        this.currentTrackLabel = new VisLabel("No track", fontStyle);
+        this.currentTrackLabel = new VisLabel("No track", sharedLabelStyle);
         table.add(this.currentTrackLabel).expandX().center().padTop(10).row();
 
         // Elapsed time label (centered)
-        this.elapsedTimeLabel = new VisLabel("0:00", fontStyle);
+        this.elapsedTimeLabel = new VisLabel("0:00", sharedLabelStyle);
         table.add(this.elapsedTimeLabel).expandX().center().padTop(5).row();
 
         // Control buttons
         VisTable buttonsTable = new VisTable();
         
         // Previous button
-        VisLabel previousButton = new VisLabel("<<", fontStyle);
+        VisLabel previousButton = new VisLabel("<<", sharedLabelStyle);
         previousButton.addListener(new ClickListener() {
             @Override
             public void clicked(InputEvent event, float x, float y) {
@@ -165,7 +190,7 @@ public class MenuScreen implements Screen, MusicPlayer.MusicPlayerListener {
         buttonsTable.add(previousButton).pad(10);
 
         // Play/Pause button
-        this.playPauseButton = new VisLabel("PLAY", fontStyle);
+        this.playPauseButton = new VisLabel("PLAY", sharedLabelStyle);
         this.playPauseButton.addListener(new ClickListener() {
             @Override
             public void clicked(InputEvent event, float x, float y) {
@@ -175,7 +200,7 @@ public class MenuScreen implements Screen, MusicPlayer.MusicPlayerListener {
         buttonsTable.add(this.playPauseButton).pad(10);
 
         // Next button
-        VisLabel nextButton = new VisLabel(">>", fontStyle);
+        VisLabel nextButton = new VisLabel(">>", sharedLabelStyle);
         nextButton.addListener(new ClickListener() {
             @Override
             public void clicked(InputEvent event, float x, float y) {
@@ -189,17 +214,17 @@ public class MenuScreen implements Screen, MusicPlayer.MusicPlayerListener {
         // Volume control - minimalist slider with custom style
         com.badlogic.gdx.scenes.scene2d.ui.Slider.SliderStyle sliderStyle = new com.badlogic.gdx.scenes.scene2d.ui.Slider.SliderStyle();
         
-        // Create smaller knob (6x6 pixels)
-        Texture knobTexture = Tools.createColorTexture(new Color(0.7f, 0.7f, 0.7f, 1), 6, 6);
-        sliderStyle.knob = new TextureRegionDrawable(knobTexture);
+        // Create smaller knob and store for disposal
+        sliderKnobTexture = Tools.createColorTexture(new Color(0.7f, 0.7f, 0.7f, 1), SLIDER_KNOB_SIZE, SLIDER_KNOB_SIZE);
+        sliderStyle.knob = new TextureRegionDrawable(sliderKnobTexture);
         
-        // Create background bar
-        Texture bgTexture = Tools.createColorTexture(new Color(0.3f, 0.3f, 0.3f, 1), 1, 3);
-        sliderStyle.background = new TextureRegionDrawable(bgTexture);
+        // Create background bar and store for disposal
+        sliderBgTexture = Tools.createColorTexture(new Color(0.3f, 0.3f, 0.3f, 1), 1, 3);
+        sliderStyle.background = new TextureRegionDrawable(sliderBgTexture);
         
-        // Create knob before (filled part)
-        Texture knobBeforeTexture = Tools.createColorTexture(new Color(0.6f, 0.6f, 0.6f, 1), 1, 3);
-        sliderStyle.knobBefore = new TextureRegionDrawable(knobBeforeTexture);
+        // Create knob before (filled part) and store for disposal
+        sliderKnobBeforeTexture = Tools.createColorTexture(new Color(0.6f, 0.6f, 0.6f, 1), 1, 3);
+        sliderStyle.knobBefore = new TextureRegionDrawable(sliderKnobBeforeTexture);
         
         com.kotcrab.vis.ui.widget.VisSlider volumeSlider = new com.kotcrab.vis.ui.widget.VisSlider(0, 100, 1, false);
         volumeSlider.setStyle(sliderStyle);
@@ -211,7 +236,7 @@ public class MenuScreen implements Screen, MusicPlayer.MusicPlayerListener {
                 musicPlayer.setVolume(volume);
             }
         });
-        table.add(volumeSlider).width(100).height(10).padTop(5).padBottom(10);
+        table.add(volumeSlider).width(SLIDER_WIDTH).height(SLIDER_HEIGHT).padTop(5).padBottom(10);
 
         return table;
     }
@@ -233,9 +258,7 @@ public class MenuScreen implements Screen, MusicPlayer.MusicPlayerListener {
     }
 
     private void updateVinylPositions() {
-        int vinylSize = 120;
-        float centerX = Gdx.graphics.getWidth() / 2 - vinylSize / 2;
-        int spacing = 60; // Reduced spacing for overlapping
+        float centerX = Gdx.graphics.getWidth() / 2 - VINYL_SIZE / 2;
 
         // Stop all rotations first
         for (Vinyle vinyle : vinyleList) {
@@ -246,8 +269,10 @@ public class MenuScreen implements Screen, MusicPlayer.MusicPlayerListener {
         for (int i = 0; i < vinyleList.size; i++) {
             Vinyle vinyle = vinyleList.get(i);
             int offset = i - currentAlbumIndex;
-            float newX = centerX + (offset * spacing);
-            vinyle.setPosition(newX, vinylY);
+            float newX = centerX + (offset * VINYL_SPACING);
+            
+            // Animate to position with smooth effect
+            vinyle.animateToPosition(newX, VINYL_Y, VINYL_ANIMATION_DURATION);
             
             // Set z-index: center vinyl is highest, decreasing as we move away
             // For left side: further left = lower z-index
@@ -272,7 +297,19 @@ public class MenuScreen implements Screen, MusicPlayer.MusicPlayerListener {
     @Override
     public void onTrackChanged(String trackTitle) {
         if (currentTrackLabel != null) {
-            currentTrackLabel.setText(trackTitle);
+            fullTrackTitle = trackTitle;
+            scrollOffset = 0;
+            
+            if (trackTitle.length() > MAX_TITLE_LENGTH) {
+                // Create scrolling text with separator
+                scrollingText = trackTitle + SCROLL_SEPARATOR + trackTitle;
+                shouldScroll = true;
+                currentTrackLabel.setText(trackTitle.substring(0, Math.min(MAX_TITLE_LENGTH, trackTitle.length())));
+            } else {
+                scrollingText = trackTitle;
+                shouldScroll = false;
+                currentTrackLabel.setText(trackTitle);
+            }
         }
     }
 
@@ -303,8 +340,6 @@ public class MenuScreen implements Screen, MusicPlayer.MusicPlayerListener {
         }
     }
 
-
-
     @Override
     public void show() {
         Gdx.input.setInputProcessor(this.stage);
@@ -319,6 +354,9 @@ public class MenuScreen implements Screen, MusicPlayer.MusicPlayerListener {
         
         // Update progress bar
         updateProgressBar();
+        
+        // Update scrolling text
+        updateScrollingText(delta);
     }
     
     private void updateProgressBar() {
@@ -329,13 +367,6 @@ public class MenuScreen implements Screen, MusicPlayer.MusicPlayerListener {
             // Update elapsed time label
             if (elapsedTimeLabel != null) {
                 elapsedTimeLabel.setText(formatTime(position));
-            }
-            
-            // Check if music has finished playing
-            // When a music finishes, isPlaying() returns false even though we think it's playing
-            if (musicPlayer.isPlaying() && !music.isPlaying()) {
-                // Music has finished, play next track
-                musicPlayer.next();
             }
         } else {
             // Reset when no music is playing
@@ -350,6 +381,31 @@ public class MenuScreen implements Screen, MusicPlayer.MusicPlayerListener {
         int secs = (int) (seconds % 60);
         return String.format("%d:%02d", minutes, secs);
     }
+    
+    private void updateScrollingText(float delta) {
+        if (!shouldScroll || currentTrackLabel == null || fullTrackTitle == null) {
+            return;
+        }
+        
+        // Increment scroll position smoothly
+        scrollOffset += delta * 1f; // Slower, smoother scrolling (0.5 characters per second)
+        
+        // Reset when we've scrolled through one full cycle
+        if (scrollOffset >= fullTrackTitle.length() + SCROLL_SEPARATOR.length()) {
+            scrollOffset -= (fullTrackTitle.length() + SCROLL_SEPARATOR.length());
+        }
+        
+        // Build visible text with smooth character-based scrolling
+        StringBuilder visibleText = new StringBuilder();
+        int startIndex = (int) scrollOffset;
+        
+        for (int i = 0; i < MAX_TITLE_LENGTH; i++) {
+            int charIndex = (startIndex + i) % scrollingText.length();
+            visibleText.append(scrollingText.charAt(charIndex));
+        }
+        
+        currentTrackLabel.setText(visibleText.toString());
+    }
 
     @Override
     public void resize(int width, int height) {
@@ -357,26 +413,49 @@ public class MenuScreen implements Screen, MusicPlayer.MusicPlayerListener {
     }
 
     @Override
-    public void pause() {
-    }
+    public void pause() {}
 
     @Override
-    public void resume() {
-    }
+    public void resume() {}
 
     @Override
-    public void hide() {
-    }
+    public void hide() {}
 
     @Override
     public void dispose() {
         this.stage.dispose();
+        
+        // Dispose header texture
         if (headerBgTexture != null) {
             headerBgTexture.dispose();
         }
-        if (vinyleTableTexture != null) {
-            vinyleTableTexture.dispose();
+        
+        // Dispose controls background texture
+        if (controlsBgTexture != null) {
+            controlsBgTexture.dispose();
         }
+        
+        // Dispose slider textures
+        if (sliderKnobTexture != null) {
+            sliderKnobTexture.dispose();
+        }
+        if (sliderBgTexture != null) {
+            sliderBgTexture.dispose();
+        }
+        if (sliderKnobBeforeTexture != null) {
+            sliderKnobBeforeTexture.dispose();
+        }
+        
+        // Dispose cached circular textures
+        if (circularTexturesCache != null) {
+            for (Texture texture : circularTexturesCache) {
+                if (texture != null) {
+                    texture.dispose();
+                }
+            }
+            circularTexturesCache.clear();
+        }
+        
         if (musicPlayer != null) {
             musicPlayer.dispose();
         }

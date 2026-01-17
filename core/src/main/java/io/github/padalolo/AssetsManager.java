@@ -74,11 +74,13 @@ public class AssetsManager implements Disposable {
                             images.add(albumTexture);
                         } catch (Exception e) {
                             System.err.println("Erreur lors du chargement de l'image pour " + file.name() + ": " + e.getMessage());
-                            images.add(null);
+                            // Use fallback vinyl image
+                            images.add(getVinylTexture());
                         }
                     } else {
                         System.out.println("Aucune image trouvée pour l'album: " + file.name());
-                        images.add(null);
+                        // Use fallback vinyl image
+                        images.add(getVinylTexture());
                     }
                 }
             }
